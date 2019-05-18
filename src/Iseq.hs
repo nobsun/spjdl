@@ -2,6 +2,8 @@ module Iseq
   ( Iseq
   , iNil
   , iStr
+  , iNum
+  , iFWNum
   , iAppend
   , iNewline
   , iIndent
@@ -12,6 +14,20 @@ module Iseq
 
 iNil     :: Iseq
 iNil     = INil
+
+iNum     :: Int -> Iseq
+iNum     = IStr . show
+
+iFWNum   :: Int -> Int -> Iseq
+iFWNum width n
+  = iStr (space (width - length digits) ++ digits)
+    where
+      digits = show n
+
+iLayn :: [Iseq] -> Iseq
+iLayn seqs = iConcat (map layItem (zip [1..] seqs))
+             where
+               layItem (n, seq) = iConcat [ iFWNum 4 n, iStr ") ", iIndent seq, iNewline ]
 
 iStr     :: String -> Iseq
 iStr ""  = INil

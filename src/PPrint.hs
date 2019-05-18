@@ -5,6 +5,7 @@ import Iseq
 
 pprExpr :: CoreExpr -> Iseq
 pprExpr (EVar v) = iStr v
+pprExpr (ENum n) = iStr (show n)
 pprExpr (EAp e1 e2) = pprExpr e1 `iAppend ` iStr " " `iAppend` pprAExpr e2
 pprExpr (ELet isrec defns expr)
   = iConcat [ iStr keyword, iNewline

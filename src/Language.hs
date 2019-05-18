@@ -7,6 +7,7 @@ module Language
   , CoreProgram
   , isAtomicExpr
   , preludeDefs
+  , someExpr
   ) where
 
 import Utils
@@ -24,8 +25,8 @@ data Expr a
       (Expr a)               -- ^   Expression to scrutinise
       [Alter a]              -- ^   Alternatives
   | ELam [a] (Expr a)        -- ^ Lambda expression
-  deriving (Eq, Show)
-
+  deriving Show
+  
 type CoreExpr = Expr Name
 type Name = String
 type IsRec = Bool
@@ -67,6 +68,14 @@ preludeDefs
                                   (EAp (EVar "g") (EVar "x")))
     , ("twice", ["f"], EAp (EAp (EVar "_B") (EVar "f")) (EVar "f"))
     ]
+
+-- let expression
+
+someExpr :: CoreExpr
+someExpr = ELet nonRecursive
+  [("p", ENum 3)
+  ,("square", ELam ["x"] (EAp (EAp (EVar "mul") (EVar "x")) (EVar "x")))
+  ] (EAp (EAp (EVar "mul") (EVar "p")) (EAp (EVar "square") (ENum 5)))
 
 -- Pretty Printer
 

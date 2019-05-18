@@ -8,6 +8,9 @@ module Language
   , isAtomicExpr
   , preludeDefs
   , someExpr
+  , binOpExpr
+  , binOpExpr1
+  , binOps
   ) where
 
 import Utils
@@ -55,6 +58,32 @@ type CoreProgram = Program Name
 type ScDefn a = (Name, [a], Expr a)
 type CoreScDefn = ScDefn Name
 
+binOps :: [(Name, Int)]
+binOps = [ ("^", 8)
+         , ("*", 7)
+         , ("/", 7)
+         , ("+", 6)
+         , ("-", 6)
+         , ("==", 4)
+         , ("/=", 4)
+         , ("<", 4)
+         , ("<=", 4)
+         , (">", 4)
+         , (">=", 4)
+         , ("&&", 3)
+         , ("||", 2)
+         , ("$", 0)
+         ]
+
+binOpExpr :: CoreExpr
+binOpExpr = EAp (EAp (EVar ">")
+                     (EAp (EAp (EVar "+") (EVar "x")) (EVar "y")))
+                (EAp (EAp (EVar "*") (EVar "p"))
+                     (EAp (EVar "length") (EVar "xs")))
+
+binOpExpr1 :: CoreExpr
+binOpExpr1 = EAp (EAp (EVar "*") (EAp (EAp (EVar "+") (ENum 1)) (ENum 2)))
+                 (EAp (EAp (EVar "+") (ENum 5)) (ENum 2))
 -- Prelude
 
 preludeDefs :: CoreProgram

@@ -11,9 +11,12 @@ module Language
   , binOpExpr
   , binOpExpr1
   , binOps
+  , parse
+  , syntax
   ) where
 
 import Utils
+import Parser
 
 data Expr a 
   = EVar a                   -- ^ Variables
@@ -106,17 +109,26 @@ someExpr = ELet nonRecursive
   ,("square", ELam ["x"] (EAp (EAp (EVar "mul") (EVar "x")) (EVar "x")))
   ] (EAp (EAp (EVar "mul") (EVar "p")) (EAp (EVar "square") (ENum 5)))
 
--- Pretty Printer
+-- lexer and parser
 
-{-
-pprExpr :: CoreExpr -> String
-pprExpr (ENum n ) = show n
-pprExpr (Evar v)  = v
-pprExpr (EAp e1 e2) = pprExpr e1 ++ " " ++ pprAExpr e2
+clex :: Int -> String -> [Token]
+clex n ccs@(c : cs)
+  | isNewline c    = clex (n+1) cs
+  | isWhiteSpace c = clex n cs
+  | isDigit c      = (n, numToken) : clex n restCs
+  | isAlpha c      = (n, varToken) : clex n restCs'
+  | cs2 == "--"    = clex n (dropWhile (/= '\n') restCs'')
+  | cs2 `elem` twoCharOps
+                   = (n, cs2) : clex n cs
+  | otherwise      = (n, [c]) : clex n cs
+      where
+        (numToken, restCs)  = span isDigit ccs
+        (varToken, restCs') = span isIdChar ccs
+        (cs2,restCs'')      = splitAt 2 ccs
+clex _ [] = []
 
-pprAExpr :: CoreExpr -> String
-pprAExpr e 
-  | isAtomicExpr e = pprExpr e
-  | otherwise      = "(" ++ pprExpr e ++ ")"
--}
+syntax :: [Token] -> CoreProgram
+syntax = undefined
 
+parse :: String -> CoreProgram
+parse = syntax . clex 1

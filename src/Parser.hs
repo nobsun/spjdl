@@ -6,7 +6,6 @@ module Parser
   , isAlpha
   , isIdChar
   , isIdString
-  , twoCharOps
   , Parser
   , pLit
   , pNum
@@ -16,11 +15,15 @@ module Parser
   , pThen
   , pApply
   , pAp
+  , pLeft
+  , pRight
   , pZeroOrMore
   , pOneOrMore
   , pEmpty
+  , pOneOrMoreWithSep
   , pMunch
   , pMunch1
+  , pBetween
   ) where
 
 type Token = (Int, String)
@@ -31,9 +34,6 @@ isDigit = flip elem ['0'..'9']
 isIdChar c = isAlpha c || isDigit c || c == '_'
 isWhiteSpace = flip elem " \t"
 isNewline = ('\n' ==)
-
-twoCharOps :: [String]
-twoCharOps = ["==", "/=", ">=", "<=", "->"]
 
 type Parser a = [Token] -> [(a, [Token])]
 
@@ -64,6 +64,8 @@ keywords = ["let", "letrec", "in", "case", "of", "Pack"]
 -}
 pAlt :: Parser a -> Parser a -> Parser a
 pAlt p1 p2 toks = p1 toks ++ p2 toks
+
+infixr 6 `pAlt`
 
 {- |
   Combine parsers
@@ -103,17 +105,26 @@ pAp :: Parser (a -> b) -> Parser a -> Parser b
 pAp pf px toks = [ (f x, toks2) | (f, toks1) <- pf toks
                                 , (x, toks2) <- px toks1 ]
 
+pLeft :: Parser a -> Parser b -> Parser a
+pLeft p q toks = [ (x, toks2) | (x, toks1) <- p toks
+                              , (_, toks2) <- q toks1 ]
+
+pRight :: Parser a -> Parser b -> Parser b
+pRight p q toks = [ (y, toks2) | (_, toks1) <- p toks
+                               , (y, toks2) <- q toks1 ]
+
+pBetween :: Parser a -> Parser b -> Parser c -> Parser c
+pBetween p q r = pLeft (pRight p r) q 
+
 {- |
   原文は pOneOrMoreWithSep :: Parser a -> Parser b -> Parser [a]
   のように区切り子パーザが第2引数
 -}
-pOneOrMoreWithSep :: Parser a -> Parser b -> Parser [b]
-pOneOrMoreWithSep sep p toks = case p toks of
-  [] -> []
-  rs -> [ (hd:tl, toks2)
-        | (hd, toks1) <- rs
-        , (tl, toks2) <- pZeroOrMore (pThen (flip const) sep p) toks1
-        ]
+pOneOrMoreWithSep :: Parser a -> Parser b -> Parser [a]
+pOneOrMoreWithSep p sep toks = [ (hd:tl, toks2)
+                               | (hd, toks1) <- p toks
+                               , (tl, toks2) <- pZeroOrMore (pThen const p sep) toks1
+                               ]
 
 pSat :: (String -> Bool) -> Parser String
 pSat p (tok:toks) | p s = [(s, toks)]

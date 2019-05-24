@@ -4,12 +4,14 @@ module Iseq
   , iStr
   , iNum
   , iFWNum
+  , iLayn
   , iAppend
   , iNewline
   , iIndent
   , iConcat
   , iInterleave
   , iDisplay
+  , space
   ) where
 
 iNil     :: Iseq

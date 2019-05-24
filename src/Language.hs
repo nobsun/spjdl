@@ -5,6 +5,7 @@ module Language
   , CoreAlt
   , CoreScDefn
   , CoreProgram
+  , preludeDefs
   , parse
   ) where
 
@@ -91,16 +92,17 @@ binOpExpr1 = EAp (EAp (EVar "*") (EAp (EAp (EVar "+") (ENum 1)) (ENum 2)))
 -- Prelude
 
 preludeDefs :: CoreProgram
-preludeDefs
-  = [ ("_I", ["x"], EVar "x")
-    , ("_K", ["x", "_"], EVar "x")
-    , ("_K1", ["_", "y"], EVar "y")
-    , ("_S", ["f", "g", "x"], EAp (EAp (EVar "f") (EVar "x"))
-                                  (EAp (EVar "g") (EVar "x")))
-    , ("_B", ["f", "g", "x"], EAp (EVar "f")
-                                  (EAp (EVar "g") (EVar "x")))
-    , ("twice", ["f"], EAp (EAp (EVar "_B") (EVar "f")) (EVar "f"))
-    ]
+preludeDefs = parse preludeCodes
+
+preludeCodes :: String
+preludeCodes =
+  "I x = x;\n\
+  \K x y = x;\n\
+  \K1 x y = y;\n\
+  \S f g x = f x (g x);\n\
+  \B f g x = f (g x);\n\
+  \C f x y = f y x;\n\
+  \twice f = B f f"
 
 -- let expression
 
@@ -169,16 +171,20 @@ pprint prog = iDisplay (pprProgram prog)
 
 -- lexer
 
+type Token = (Int, String)
+
+tok2str :: Token -> String
+tok2str = snd
+
 clex :: Int -> String -> [Token]
 clex n ccs@(c : cs)
-  | isNewline c    = clex (n+1) cs
-  | isWhiteSpace c = clex n cs
-  | isDigit c      = (n, numToken) : clex n restCs
-  | isAlpha c      = (n, varToken) : clex n restCs'
-  | cs2 == "--"    = clex n (dropWhile (/= '\n') restCs'')
-  | cs2 `elem` twoCharOps
-                   = (n, cs2) : clex n cs
-  | otherwise      = (n, [c]) : clex n cs
+  | isNewline c           = clex (n+1) cs
+  | isWhiteSpace c        = clex n cs
+  | isDigit c             = (n, numToken) : clex n restCs
+  | isAlpha c || c == '_' = (n, varToken) : clex n restCs'
+  | cs2 == "--"           = clex n (dropWhile (/= '\n') restCs'')
+  | cs2 `elem` twoCharOps = (n, cs2) : clex n cs
+  | otherwise             = (n, [c]) : clex n cs
       where
         (numToken, restCs)  = span isDigit ccs
         (varToken, restCs') = span isIdChar ccs

@@ -1,6 +1,5 @@
 module Parser
-  ( Token
-  , isNewline
+  ( isNewline
   , isWhiteSpace
   , isDigit
   , isAlpha
@@ -19,14 +18,36 @@ module Parser
   , pRight
   , pZeroOrMore
   , pOneOrMore
-  , pEmpty
-  , pOneOrMoreWithSep
   , pMunch
   , pMunch1
+  , pEmpty
+  , pOneOrMoreWithSep
   , pBetween
   ) where
 
+-- 
 type Token = (Int, String)
+tok2str :: Token -> String
+tok2str = snd
+
+clex :: Int -> String -> [Token]
+clex n ccs@(c : cs)
+  | isNewline c           = clex (n+1) cs
+  | isWhiteSpace c        = clex n cs
+  | isDigit c             = (n, numToken) : clex n restCs
+  | isAlpha c || c == '_' = (n, varToken) : clex n restCs'
+  | cs2 == "--"           = clex n (dropWhile (/= '\n') restCs'')
+  | cs2 `elem` twoCharOps = (n, cs2) : clex n cs
+  | otherwise             = (n, [c]) : clex n cs
+      where
+        (numToken, restCs)  = span isDigit ccs
+        (varToken, restCs') = span isIdChar ccs
+        (cs2,restCs'')      = splitAt 2 ccs
+clex _ [] = []
+
+twoCharOps :: [String]
+twoCharOps = ["&&", "||", "==", "/=", ">=", "<=", "->"]
+-- 
 
 isAlpha, isDigit, isIdChar, isWhiteSpace, isNewline :: Char -> Bool
 isAlpha = flip elem (['A'..'Z'] ++ ['a'..'z'])
@@ -39,7 +60,7 @@ type Parser a = [Token] -> [(a, [Token])]
 
 {- |
   Literal parser
->>> pLit "Hello" $ clex 1 "Hello John!" 
+>>> pLit "Hello" $ clex 1 "Hello John!"
 [("Hello",[(1,"John"),(1,"!")])]
 -}
 pLit :: String -> Parser String
@@ -49,7 +70,7 @@ pVar :: Parser String
 pVar = pSat isIdString
 
 isIdString :: String -> Bool
-isIdString ccs@(c:cs) = isAlpha c && all isIdChar cs && notElem ccs keywords
+isIdString ccs@(c:cs) = (isAlpha c || c == '_') && all isIdChar cs && notElem ccs keywords
 
 keywords :: [String]
 keywords = ["let", "letrec", "in", "case", "of", "Pack"] 
@@ -90,10 +111,16 @@ pZeroOrMore p = pOneOrMore p `pAlt` pEmpty []
 [(["Hello","Goodbye"],[(1,"!")]),(["Hello"],[(1,"Goodbye"),(1,"!")])]
 -}
 pOneOrMore :: Parser a -> Parser [a]
-pOneOrMore p toks = pThen (:) p (pZeroOrMore p) toks
+pOneOrMore p = pThen (:) p (pZeroOrMore p)
 
 pEmpty :: a -> Parser a
 pEmpty x toks = [(x, toks)]
+
+pMunch :: Parser a -> Parser [a]
+pMunch p toks = take 1 $ pMunch1 p `pAlt` pEmpty [] $ toks
+
+pMunch1 :: Parser a -> Parser [a]
+pMunch1 p = pThen (:) p (pMunch p)
 
 {- |
   原本では，pApply :: Parser a -> (a -> b) -> Parser b
@@ -117,26 +144,18 @@ pBetween :: Parser a -> Parser b -> Parser c -> Parser c
 pBetween p q r = pLeft (pRight p r) q 
 
 {- |
-  原文は pOneOrMoreWithSep :: Parser a -> Parser b -> Parser [a]
-  のように区切り子パーザが第2引数
+  one or more with separator
+>>> pOneOrMoreWithSep pVar (pLit ",") $ clex 1 "foo,bar,baz"
+[(["foo","bar","baz"],[])]
 -}
 pOneOrMoreWithSep :: Parser a -> Parser b -> Parser [a]
-pOneOrMoreWithSep p sep toks = [ (hd:tl, toks2)
-                               | (hd, toks1) <- p toks
-                               , (tl, toks2) <- pZeroOrMore (pThen const p sep) toks1
-                               ]
+pOneOrMoreWithSep p sep = pThen (:) p (pMunch (pThen (flip const) sep p))
 
 pSat :: (String -> Bool) -> Parser String
 pSat p (tok:toks) | p s = [(s, toks)]
   where
-    s = snd tok
+    s = tok2str tok
 pSat _ _ = []
 
 pNum :: Parser Int
 pNum = pApply read (pSat (all isDigit))
-
-pMunch :: Parser a -> Parser [a]
-pMunch p = pMunch1 p `pAlt` pEmpty []
-
-pMunch1 :: Parser a -> Parser [a]
-pMunch1 p = take 1 . pThen (:) p (pMunch p)

@@ -1,5 +1,5 @@
 {-# LANGUAGE BangPatterns #-}
-module Template where
+module Template1 where
 
 -- import Debug.Trace
 

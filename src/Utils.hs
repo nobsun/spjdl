@@ -35,7 +35,7 @@ hUpdate  :: Heap a -> Addr -> a -> Heap a
 hFree    :: Heap a -> Addr -> Heap a
 
 hInitial
-  =  ((0, [1..], []), (0, 0, 0))
+  =  ((0, [1..64], []), (0, 0, 0))
 hAlloc  ((size, next:free, cts), (a,u,f)) node
   = (((size+1, free,    (next, node) : cts), (a + 1, u, f)), next)
 hUpdate ((size, free, cts), (a,u,f)) addr node

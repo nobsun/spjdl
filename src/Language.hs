@@ -4,9 +4,11 @@ module Language
   , CoreExpr
   , CoreAlt
   , CoreScDefn
+  , CoreBinding
   , CoreProgram
   , preludeDefs
   , parse
+  , clex
   ) where
 
 import Utils

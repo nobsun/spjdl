@@ -1,5 +1,4 @@
-{-# LANGUAGE BangPatterns #-}
-module Template where
+module Template2 where
 
 -- import Debug.Trace
 
@@ -7,33 +6,9 @@ import Utils
 import Iseq
 import Language
 
+import Data.List (intercalate)
 
-tracing :: Show a => a -> a
-tracing x = x -- trace (show x) x
-
-type MultState = (Int, Int, Int, Int)
-
-initAState m n = (m, n, 0, 0)
-
-evalMult :: MultState -> [MultState]
-evalMult state
-  | multFinal state = [state]
-  | otherwise       = state : evalMult (stepMult state)
-
-multFinal :: MultState -> Bool
-multFinal (m,n,d,t) = n == 0 && d == 0 
-
-stepMult st = case st of
-  (m, n, d, t) | d > 0 -> (m, n  , d-1, t+1)
-  (m, n, 0, t) | n > 0 -> (m, n-1, n,   t)
-  
-{-
-  invariant: m * n + d + t = 6
--}
-
-
-
--- Mark 1 : A minimal template instatioation graph reducer
+-- Mark 2 : let(rec) expression
 
 --- Structure of the implementation
 
@@ -81,17 +56,29 @@ applyToStats func (stack, dump, heap, scDefs, stats)
 
 -- compiler
 
-ex0204 :: String
-ex0204 = "main = S K K 3"
-
-ex0204' :: String
-ex0204' = "main = S K K"
+testProg :: String
+testProg = intercalate ";\n" [pairs,fsts,snds,fxys,mains]
+pairs  = "pair x y f = f x y"
+fsts   = "fst p = p K"
+snds   = "snd p = p K1"
+fxys   = "f x y = " ++ letrecexpr
+letrecexpr = "letrec\n\
+         \            a = pair x b;\n\
+         \            b = pair y a\n\
+         \        in\n\
+         \        fst (snd (snd (snd a)))"
+letexpr = "let\n\
+         \    a = S K K x;\n\
+         \    b = S K K y\n\
+         \    in\n\
+         \    fst (pair a b)"
+mains  = "main = f 4 3"
 
 compile :: CoreProgram -> TiState
 compile program
   = (initialStack, initialTiDump, initialHeap, globals, tiStatInitial)
     where
-      scDefs = tracing $ program ++ preludeDefs ++ extraPreludeDefs
+      scDefs = program ++ preludeDefs ++ extraPreludeDefs
       (initialHeap, globals) = buildInitialHeap scDefs
       initialStack = [addressOfMain]
       addressOfMain = aLookup globals "main" (error "main is not defined")
@@ -100,7 +87,7 @@ extraPreludeDefs :: CoreProgram
 extraPreludeDefs = []
 
 buildInitialHeap :: [CoreScDefn] -> (TiHeap, TiGlobals)
-buildInitialHeap scDefs = mapAccuml allocateSc hInitial (tracing scDefs)
+buildInitialHeap scDefs = mapAccuml allocateSc hInitial scDefs
 
 allocateSc :: TiHeap -> CoreScDefn -> (TiHeap, (Name, Addr))
 allocateSc heap (name, args, body)
@@ -182,11 +169,21 @@ instantiate expr heap env = case expr of
   ELet isrec defs body -> instantiateLet isrec defs body heap env
   ECase e alts         -> error "Can't instantiate case exprs"
 
+
 instantiateConstr tag arity heap env
   = error "Can't instantiate constructors yet"
-instantiateLet isrec defs body heap env
-  = error "Can't instantiate let(rec)s yet"
 
+instantiateLet :: Bool -> [CoreBinding] -> CoreExpr -> TiHeap -> Assoc Name Addr -> (TiHeap , Addr)
+instantiateLet  isrec defs body heap env
+  = instantiate body heap' env'
+  where
+    (heap', env') = foldr f (heap, env) defs
+    f = if isrec then g else h
+    g (name, expr) (heap, env) = case instantiate expr heap env' of
+      (heap', addr) -> (heap', (name, addr) : env)
+    h (name, expr) (heap, env) = case instantiate expr heap env of
+      (heap', addr) -> (heap', (name, addr) : env)
+      
 -- Formatting the results
 
 showResults :: [TiState] -> String
@@ -280,5 +277,3 @@ showStack' heap stack
         = iConcat [ showFWAddr addr, iStr ": "
                   , showStkNode heap (hLookup heap addr)
                   ]
-
-

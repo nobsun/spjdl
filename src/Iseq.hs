@@ -27,7 +27,7 @@ iFWNum width n
       digits = show n
 
 iLayn :: [Iseq] -> Iseq
-iLayn seqs = iConcat (map layItem (zip [1..] seqs))
+iLayn seqs = iConcat (map layItem (zip [0..] seqs))
              where
                layItem (n, seq) = iConcat [ iFWNum 4 n, iStr ") ", iIndent seq, iNewline ]
 

@@ -6,6 +6,7 @@ module Language
   , CoreScDefn
   , CoreBinding
   , CoreProgram
+  , IsRec
   , preludeDefs
   , parse
   , clex

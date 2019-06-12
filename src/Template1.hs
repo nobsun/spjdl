@@ -129,7 +129,7 @@ step state = case state of
   where
     dispatch (NNum n)                  = numStep state n
     dispatch (NAp a1 a2)               = apStep  state a1 a2
-    dispatch (NSupercomb sc args body) = scStep state sc args body
+    dispatch (NSupercomb sc args body) = scStep  state sc args body
 
 numStep :: TiState -> Int -> TiState
 numStep state n = error "Number applied as a function"
@@ -276,7 +276,7 @@ testProg0, testProg1, testProg2 :: String
 testProg0 = "main = S K K 3"
 testProg1 = "main = S K K" -- wrong (not saturated)
 testProg2 = "id x = x;\n\
-            \main = twice twice id 3"
+            \main = twice twice twice id 3"
 
 test :: Int -> String -> String
 test steps = showResults . take steps . eval . compile . parse
